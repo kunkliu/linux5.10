@@ -107,8 +107,8 @@ struct vring_desc {
 
 struct vring_avail {    /* 感觉avail和used全都是基于后端来说的 */
 	__virtio16 flags;
-	__virtio16 idx;
-	__virtio16 ring[];
+	__virtio16 idx;     /* 数组的未使用的位置 */
+	__virtio16 ring[];  /* 这里是一个数组，里面存储desc链表的表头的位置,通过next来确定链表的结束 */
 };
 
 /* u32 is used here for ids for padding reasons. */
@@ -116,7 +116,7 @@ struct vring_used_elem {
 	/* Index of start of used descriptor chain. */
 	__virtio32 id;
 	/* Total length of the descriptor chain which was used (written to) */
-	__virtio32 len;
+	__virtio32 len;     /* 与avail不同，这里多了一个长度 */
 };
 
 typedef struct vring_used_elem __attribute__((aligned(VRING_USED_ALIGN_SIZE)))

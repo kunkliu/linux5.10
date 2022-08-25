@@ -363,7 +363,7 @@ static int rpmsg_eptdev_create(struct rpmsg_ctrldev *ctrldev,
 	dev->groups = rpmsg_eptdev_groups;
 	dev_set_drvdata(dev, eptdev);
 
-	cdev_init(&eptdev->cdev, &rpmsg_eptdev_fops);
+	cdev_init(&eptdev->cdev, &rpmsg_eptdev_fops);   /* 在一个cdev的iocrl中在注册一个cdev */
 	eptdev->cdev.owner = THIS_MODULE;
 
 	ret = ida_simple_get(&rpmsg_minor_ida, 0, RPMSG_DEV_MAX, GFP_KERNEL);
@@ -408,7 +408,7 @@ static int rpmsg_ctrldev_open(struct inode *inode, struct file *filp)
 	struct rpmsg_ctrldev *ctrldev = cdev_to_ctrldev(inode->i_cdev);
 
 	get_device(&ctrldev->dev);
-	filp->private_data = ctrldev;
+	filp->private_data = ctrldev;   /* 在cdev open时设置private_data , 在ioctrl时使用 */
 
 	return 0;
 }
@@ -430,9 +430,10 @@ static long rpmsg_ctrldev_ioctl(struct file *fp, unsigned int cmd,
 	struct rpmsg_endpoint_info eptinfo;
 	struct rpmsg_channel_info chinfo;
 
-	if (cmd != RPMSG_CREATE_EPT_IOCTL)
+	if (cmd != RPMSG_CREATE_EPT_IOCTL)  /* 只支持创建节点 */
 		return -EINVAL;
 
+    /* name src dst 都是通过用户态传递下来的  */
 	if (copy_from_user(&eptinfo, argp, sizeof(eptinfo)))
 		return -EFAULT;
 
@@ -464,7 +465,7 @@ static void rpmsg_ctrldev_release_device(struct device *dev)
 
 static int rpmsg_chrdev_probe(struct rpmsg_device *rpdev)
 {
-	struct rpmsg_ctrldev *ctrldev;
+	struct rpmsg_ctrldev *ctrldev;  /* 里面包含了cdev 和 rpmsg dev */
 	struct device *dev;
 	int ret;
 
@@ -479,7 +480,7 @@ static int rpmsg_chrdev_probe(struct rpmsg_device *rpdev)
 	dev->parent = &rpdev->dev;
 	dev->class = rpmsg_class;
 
-	cdev_init(&ctrldev->cdev, &rpmsg_ctrldev_fops);
+	cdev_init(&ctrldev->cdev, &rpmsg_ctrldev_fops);     /* cdev会产生一个设备节点，open ioctl */
 	ctrldev->cdev.owner = THIS_MODULE;
 
 	ret = ida_simple_get(&rpmsg_minor_ida, 0, RPMSG_DEV_MAX, GFP_KERNEL);

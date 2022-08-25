@@ -105,7 +105,7 @@ struct vring_desc {
 	__virtio16 next;
 };
 
-struct vring_avail {
+struct vring_avail {    /* 感觉avail和used全都是基于后端来说的 */
 	__virtio16 flags;
 	__virtio16 idx;
 	__virtio16 ring[];

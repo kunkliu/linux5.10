@@ -128,7 +128,7 @@ static int rpmsg_eptdev_open(struct inode *inode, struct file *filp)
 	struct device *dev = &eptdev->dev;
 
 	get_device(dev);
-
+	/* 注册callback函数，收到数据后，callback会唤醒等待队列，进而唤醒阻塞的read函数 */
 	ept = rpmsg_create_ept(rpdev, rpmsg_ept_cb, eptdev, eptdev->chinfo);
 	if (!ept) {
 		dev_err(dev, "failed to open %s\n", eptdev->chinfo.name);
@@ -184,10 +184,10 @@ static ssize_t rpmsg_eptdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
 			return -EAGAIN;
 
 		/* Wait until we get data or the endpoint goes away */
-		if (wait_event_interruptible(eptdev->readq,
+		if (wait_event_interruptible(eptdev->readq,		/* 在cb函数中唤醒 */
 					     !skb_queue_empty(&eptdev->queue) ||
 					     !eptdev->ept))
-			return -ERESTARTSYS;
+			return -ERESTARTSYS;    
 
 		/* We lost the endpoint while waiting */
 		if (!eptdev->ept)
@@ -375,9 +375,9 @@ static int rpmsg_eptdev_create(struct rpmsg_ctrldev *ctrldev,
 	if (ret < 0)
 		goto free_minor_ida;
 	dev->id = ret;
-	dev_set_name(dev, "rpmsg%d", ret);
+	dev_set_name(dev, "rpmsg%d", ret);   /* set cdev name */
 
-	ret = cdev_add(&eptdev->cdev, dev->devt, 1);
+	ret = cdev_add(&eptdev->cdev, dev->devt, 1);    /* 这里又创建了一个cdev */
 	if (ret)
 		goto free_ept_ida;
 

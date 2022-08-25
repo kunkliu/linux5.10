@@ -454,6 +454,7 @@ static int rpmsg_dev_probe(struct device *dev)
 	if (err)
 		goto out;
 
+    /* rpmsg_char在注册时cb为NULL，cb的赋值是在第二个cdev的fops的open中设置的 */
 	if (rpdrv->callback) {
 		strncpy(chinfo.name, rpdev->id.name, RPMSG_NAME_SIZE);
 		chinfo.src = rpdev->src;
@@ -470,7 +471,11 @@ static int rpmsg_dev_probe(struct device *dev)
 		rpdev->src = ept->addr;
 	}
 
-	err = rpdrv->probe(rpdev);
+    /* 这里调用rpmsg_char.c中的probe，在probe中注册一个cdev设备，然后在该cdev中在注册一个ept cdev设备 
+     * 在ept cdev的open中设置上面的cb函数，rpmsg_create_ept
+     * 那么rpmsg_char.c 的rpmsg_endpoint_ops *ops是在哪里赋值的？？？
+     */
+	err = rpdrv->probe(rpdev);  
 	if (err) {
 		dev_err(dev, "%s: failed: %d\n", __func__, err);
 		if (ept)

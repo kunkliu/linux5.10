@@ -748,7 +748,7 @@ static int rpmsg_recv_single(struct virtproc_info *vrp, struct device *dev,
 		/* make sure ept->cb doesn't go away while we use it */
 		mutex_lock(&ept->cb_lock);
 
-		if (ept->cb)
+		if (ept->cb)    /* 这里调用ept注册的cb函数，在cb函数里唤醒队列 */
 			ept->cb(ept->rpdev, msg->data, msg_len, ept->priv,
 				virtio32_to_cpu(vrp->vdev, msg->src));
 
@@ -818,7 +818,7 @@ static void rpmsg_xmit_done(struct virtqueue *svq)
 	dev_dbg(&svq->vdev->dev, "%s\n", __func__);
 
 	/* wake up potential senders that are waiting for a tx buffer */
-	wake_up_interruptible(&vrp->sendq);
+	wake_up_interruptible(&vrp->sendq); /* 唤醒send q */
 }
 
 /* invoked when a name service announcement arrives */
@@ -882,7 +882,7 @@ static int rpmsg_probe(struct virtio_device *vdev)
 	vq_callback_t *vq_cbs[] = { rpmsg_recv_done, rpmsg_xmit_done };
 	static const char * const names[] = { "input", "output" };
 	struct virtqueue *vqs[2];
-	struct virtproc_info *vrp;
+	struct virtproc_info *vrp;  /* 发送 接收vring管理者 */
 	void *bufs_va;
 	int err = 0, i;
 	size_t total_buf_space;
@@ -897,7 +897,7 @@ static int rpmsg_probe(struct virtio_device *vdev)
 	idr_init(&vrp->endpoints);
 	mutex_init(&vrp->endpoints_lock);
 	mutex_init(&vrp->tx_lock);
-	init_waitqueue_head(&vrp->sendq);
+	init_waitqueue_head(&vrp->sendq);   /* send 为什么做成q的形式？？？ */
 
 	/* We expect two virtqueues, rx and tx (and in this order) */
 	err = virtio_find_vqs(vdev, 2, vqs, vq_cbs, names, NULL);
@@ -922,7 +922,7 @@ static int rpmsg_probe(struct virtio_device *vdev)
 	total_buf_space = vrp->num_bufs * vrp->buf_size;
 
 	/* allocate coherent memory for the buffers */
-	bufs_va = dma_alloc_coherent(vdev->dev.parent,
+	bufs_va = dma_alloc_coherent(vdev->dev.parent,  /* 申请一块内存 */
 				     total_buf_space, &vrp->bufs_dma,
 				     GFP_KERNEL);
 	if (!bufs_va) {
@@ -940,19 +940,20 @@ static int rpmsg_probe(struct virtio_device *vdev)
 	vrp->sbufs = bufs_va + total_buf_space / 2;
 
 	/* set up the receive buffers */
-	for (i = 0; i < vrp->num_bufs / 2; i++) {
+	for (i = 0; i < vrp->num_bufs / 2; i++) {   /* 初始化 循环buf */
 		struct scatterlist sg;
-		void *cpu_addr = vrp->rbufs + i * vrp->buf_size;
+		void *cpu_addr = vrp->rbufs + i * vrp->buf_size;    /* addr */
 
 		rpmsg_sg_init(&sg, cpu_addr, vrp->buf_size);
 
+        /* 为什么这里初始化的是 r ？？？ */
 		err = virtqueue_add_inbuf(vrp->rvq, &sg, 1, cpu_addr,
 					  GFP_KERNEL);
 		WARN_ON(err); /* sanity check; this can't really happen */
 	}
 
 	/* suppress "tx-complete" interrupts */
-	virtqueue_disable_cb(vrp->svq);
+	virtqueue_disable_cb(vrp->svq); /* 关闭发送 */
 
 	vdev->priv = vrp;
 

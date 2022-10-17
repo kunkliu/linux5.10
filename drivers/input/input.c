@@ -34,7 +34,7 @@ MODULE_LICENSE("GPL");
 #define INPUT_FIRST_DYNAMIC_DEV		256
 static DEFINE_IDA(input_ida);
 
-static LIST_HEAD(input_dev_list);
+static LIST_HEAD(input_dev_list);    // 定义两个全局变量
 static LIST_HEAD(input_handler_list);
 
 /*
@@ -986,7 +986,7 @@ bool input_match_device_id(const struct input_dev *dev,
 	if (id->flags & INPUT_DEVICE_ID_MATCH_VERSION)
 		if (id->version != dev->id.version)
 			return false;
-
+    // evdev是怎么过这一关的？
 	if (!bitmap_subset(id->evbit, dev->evbit, EV_MAX) ||
 	    !bitmap_subset(id->keybit, dev->keybit, KEY_MAX) ||
 	    !bitmap_subset(id->relbit, dev->relbit, REL_MAX) ||
@@ -1009,9 +1009,9 @@ static const struct input_device_id *input_match_device(struct input_handler *ha
 {
 	const struct input_device_id *id;
 
-	for (id = handler->id_table; id->flags || id->driver_info; id++) {
+	for (id = handler->id_table; id->flags || id->driver_info; id++) {  // evdev 的 driver_info 始终为1
 		if (input_match_device_id(dev, id) &&
-		    (!handler->match || handler->match(handler, dev))) {
+		    (!handler->match || handler->match(handler, dev))) {    // 关注这种写法
 			return id;
 		}
 	}
@@ -2284,20 +2284,20 @@ EXPORT_SYMBOL(input_unregister_device);
  * devices in the system and attaches it to all input devices that
  * are compatible with the handler.
  */
-int input_register_handler(struct input_handler *handler)
+int input_register_handler(struct input_handler *handler)       // 相当于注册驱动
 {
 	struct input_dev *dev;
 	int error;
-
+    // 需要使用一个mutex保护 register 操作的原子性 
 	error = mutex_lock_interruptible(&input_mutex);
 	if (error)
 		return error;
 
-	INIT_LIST_HEAD(&handler->h_list);
+	INIT_LIST_HEAD(&handler->h_list);   // 动态初始化一个h_list
 
 	list_add_tail(&handler->node, &input_handler_list);
 
-	list_for_each_entry(dev, &input_dev_list, node)
+	list_for_each_entry(dev, &input_dev_list, node) // 遍历每一个设备,一次把dev取出来，传入input_attach_handler
 		input_attach_handler(dev, handler);
 
 	input_wakeup_procfs_readers();
@@ -2394,7 +2394,7 @@ int input_register_handle(struct input_handle *handle)
 	 * to the tail.
 	 */
 	if (handler->filter)
-		list_add_rcu(&handle->d_node, &dev->h_list);
+		list_add_rcu(&handle->d_node, &dev->h_list);        // 这个rcu链表要先看明白
 	else
 		list_add_tail_rcu(&handle->d_node, &dev->h_list);
 

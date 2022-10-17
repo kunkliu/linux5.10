@@ -23,6 +23,11 @@
 #define LIST_HEAD(name) \
 	struct list_head name = LIST_HEAD_INIT(name)
 
+/*
+    struct list_head aaa = { &aaa, &aaa }
+    list_head 定义在include/linux/types.h中
+*/
+
 /**
  * INIT_LIST_HEAD - Initialize a list_head structure
  * @list: list_head structure to be initialized.

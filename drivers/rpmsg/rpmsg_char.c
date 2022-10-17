@@ -554,7 +554,7 @@ static int rpmsg_char_init(void)
 		return ret;
 	}
 
-	rpmsg_class = class_create(THIS_MODULE, "rpmsg");
+	rpmsg_class = class_create(THIS_MODULE, "rpmsg");       /* 将会在probe函数里创建cdev设备，这样做的好处？ */
 	if (IS_ERR(rpmsg_class)) {
 		pr_err("failed to create rpmsg class\n");
 		unregister_chrdev_region(rpmsg_major, RPMSG_DEV_MAX);
